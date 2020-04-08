@@ -7,13 +7,14 @@
 import numpy as np
 from keras import backend as K
 from keras.preprocessing.sequence import pad_sequences
-from keras.models import Sequential,load_model
+from keras.models import Sequential, load_model
 from keras.layers import Embedding, Bidirectional, LSTM, Dense, TimeDistributed, Dropout
 from keras_contrib.layers.crf import CRF
 import matplotlib.pyplot as plt
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 class LSTMNER:
     def __init__(self):
@@ -23,20 +24,20 @@ class LSTMNER:
         self.embedding_file = os.path.join(cur, 'model/token_vec_300.bin')
         self.model_path = os.path.join(cur, 'model/tokenvec_bilstm2_crf_model_20.h5')
         self.word_dict = self.load_worddict()
-        self.class_dict ={
-                         'O':0,
-                         'TREATMENT-I': 1,
-                         'TREATMENT-B': 2,
-                         'BODY-B': 3,
-                         'BODY-I': 4,
-                         'SIGNS-I': 5,
-                         'SIGNS-B': 6,
-                         'CHECK-B': 7,
-                         'CHECK-I': 8,
-                         'DISEASE-I': 9,
-                         'DISEASE-B': 10
-                        }
-        self.label_dict = {j:i for i,j in self.class_dict.items()}
+        self.class_dict = {
+            'O': 0,
+            'TREATMENT-I': 1,
+            'TREATMENT-B': 2,
+            'BODY-B': 3,
+            'BODY-I': 4,
+            'SIGNS-I': 5,
+            'SIGNS-B': 6,
+            'CHECK-B': 7,
+            'CHECK-I': 8,
+            'DISEASE-I': 9,
+            'DISEASE-B': 10
+        }
+        self.label_dict = {j: i for i, j in self.class_dict.items()}
         self.EMBEDDING_DIM = 300
         self.EPOCHS = 10
         self.BATCH_SIZE = 128
@@ -48,12 +49,14 @@ class LSTMNER:
         self.model.load_weights(self.model_path)
 
     '加载词表'
+
     def load_worddict(self):
         vocabs = [line.strip() for line in open(self.vocab_path)]
         word_dict = {wd: index for index, wd in enumerate(vocabs)}
         return word_dict
 
     '''构造输入，转换成所需形式'''
+
     def build_input(self, text):
         x = []
         for char in text:
@@ -68,12 +71,33 @@ class LSTMNER:
         raw = self.model.predict(str)[0][-self.TIME_STAMPS:]
         result = [np.argmax(row) for row in raw]
         chars = [i for i in text]
-        tags = [self.label_dict[i] for i in result][len(result)-len(text):]
+        tags = [self.label_dict[i] for i in result][len(result) - len(text):]
         res = list(zip(chars, tags))
+
+        cn_dict = {
+            'CHECK': '检查和检验',
+            'SIGNS': '症状和体征',
+            'DISEASE': '疾病和诊断',
+            'TREATMENT': '治疗',
+            'BODY': '身体部位'}
+        label_cn = '未知'
+        result = []
+        results = []
+        for char, label in res:
+            if (label == 'O'):
+                if result:
+                    results.append((label_cn, ''.join(result)))
+                    result = []
+            else:
+                prefix = label.split('-')[0]
+                label_cn = cn_dict[prefix]
+                result.append(char)
         print(res)
+        print(results)
         return res
 
     '''加载预训练词向量'''
+
     def load_pretrained_embedding(self):
         embeddings_dict = {}
         with open(self.embedding_file, 'r') as f:
@@ -88,6 +112,7 @@ class LSTMNER:
         return embeddings_dict
 
     '''加载词向量矩阵'''
+
     def build_embedding_matrix(self):
         embedding_dict = self.load_pretrained_embedding()
         embedding_matrix = np.zeros((self.VOCAB_SIZE + 1, self.EMBEDDING_DIM))
@@ -99,6 +124,7 @@ class LSTMNER:
         return embedding_matrix
 
     '''使用预训练向量进行模型训练'''
+
     def tokenvec_bilstm2_crf_model(self):
         model = Sequential()
         embedding_layer = Embedding(self.VOCAB_SIZE + 1,
@@ -119,9 +145,9 @@ class LSTMNER:
         model.summary()
         return model
 
+
 if __name__ == '__main__':
     ner = LSTMNER()
     while 1:
         s = input('enter an sent:').strip()
         ner.predict(s)
-

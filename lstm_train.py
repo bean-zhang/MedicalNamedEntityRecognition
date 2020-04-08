@@ -140,7 +140,7 @@ class LSTMNER:
     '''绘制训练曲线'''
     def draw_train(self, history):
         # Plot training & validation accuracy values
-        plt.plot(history.history['acc'])
+        plt.plot(history.history['crf_viterbi_accuracy'])
         plt.title('Model accuracy')
         plt.ylabel('Accuracy')
         plt.xlabel('Epoch')
